@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RateLimiterDemo", "RateLimiterDemo.csproj", "{C9D15693-18F7-B1B7-10C9-3CB04F8BDCDF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C9D15693-18F7-B1B7-10C9-3CB04F8BDCDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9D15693-18F7-B1B7-10C9-3CB04F8BDCDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9D15693-18F7-B1B7-10C9-3CB04F8BDCDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9D15693-18F7-B1B7-10C9-3CB04F8BDCDF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {39DB80C7-A10D-4EE6-AD7B-D8B79CB4BDB1}
+	EndGlobalSection
+EndGlobal
