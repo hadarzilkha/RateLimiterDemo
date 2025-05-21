@@ -1,6 +1,6 @@
 # RateLimiter (C#)
 
-This is a simple and thread-safe rate limiter implementation in C# that supports multiple rate limit rules (like "10 requests per second", "100 per minute", etc.). It uses a sliding window strategy to make sure that all defined limits are respected before any action is executed.
+This is a simple and thread-safe rate limiter implementation in C# that supports multiple rate limit rules (like "10 requests per second", "100 per minute", etc.). It uses a sliding window strategy to ensure that all defined limits are respected before any action is executed.
 
 ## What it does
 You pass it a function (like an API call), and it wraps it with one or more rate limits. Before each execution, it checks all the rules. If even one rule is at its limit, it waits until it’s safe to continue.
@@ -29,9 +29,12 @@ I chose to use a **sliding window** approach instead of an absolute one.
 Yes, it’s a bit more complex to implement, but it gives much better behavior — especially when dealing with concurrency or real production environments.
 
 ## How it works
-- Each rule keeps a queue of timestamps for recent executions
-- Before running the action, each rule checks if it's within its limit
-- If not, it calculates how long it needs to wait and delays
+- Each `RateLimitRule` keeps a queue of timestamps for recent executions
+- Each rule exposes a `WaitUntilAllowedAsync` method that waits until the rule allows a new request
+- Once **all** rules approve, the timestamps are registered in each rule before the action is executed
+- The logic ensures that no timestamp is recorded before all rules have allowed execution — avoiding inconsistent or premature tracking
+- `DateTime.UtcNow` is captured **inside each lock** to guarantee time consistency
+- Delay calculations and checks are fully synchronized to avoid stale or race-prone logic
 - All of this is done using async code, so threads are not blocked
 
 ## Example
@@ -53,9 +56,3 @@ var tasks = Enumerable.Range(0, 20)
     .ToList();
 
 await Task.WhenAll(tasks);
-```
-
-## Notes
-- Fully thread-safe with internal locking
-- Supports cancellation via `CancellationToken`
-- Scales well even under high concurrency

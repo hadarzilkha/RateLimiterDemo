@@ -5,9 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Manages a single rate limit rule with a sliding window approach.
+/// Manages a single rate limit rule using a sliding window strategy.
+/// Thread-safe and designed for high-concurrency scenarios.
 /// </summary>
-
+/// 
 public class RateLimitRule
 {
     private readonly int _limit;
@@ -25,34 +26,35 @@ public class RateLimitRule
     }
 
     /// <summary>
-    /// Waits until the rule allows a new request, based on sliding window.
+    /// Waits until this rule allows a new request, based on the current timestamp queue.
+    /// Returns the approved timestamp once allowed.
     /// </summary>
-    public async Task WaitUntilAllowedAsync(CancellationToken cancellationToken = default)
+    public async Task<DateTime> WaitUntilAllowedAsync(CancellationToken cancellationToken = default)
     {
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            DateTime now = DateTime.UtcNow;
-            TimeSpan delay = TimeSpan.Zero;
+
+            DateTime now;
+            TimeSpan delay;
 
             lock (_lock)
             {
+                now = DateTime.UtcNow;
+
                 // Remove timestamps that are outside the current sliding window
                 while (_timestamps.Count > 0 && now - _timestamps.Peek() > _window)
                 {
                     _timestamps.Dequeue();
                 }
 
-                // If we're under the limit, allow the request immediately
+                // If we're under the limit, return the timestamp to be used by the caller
                 if (_timestamps.Count < _limit)
                 {
-                    // Only enqueue after checking inside the lock to avoid race conditions
-                    // where multiple threads might think they are under the limit simultaneously
-                    _timestamps.Enqueue(now);
-                    return;
+                    return now;
                 }
 
-                // Otherwise, calculate how much time we need to wait until the earliest timestamp expires
+                // Otherwise, calculate how much time we need to wait
                 DateTime oldest = _timestamps.Peek();
                 delay = (oldest + _window) - now;
             }
@@ -64,6 +66,17 @@ public class RateLimitRule
             }
 
             // After waiting, loop again to re-check the rate limit condition
+        }
+    }
+
+    /// <summary>
+    /// Registers a timestamp in the queue once all rules have approved execution.
+    /// </summary>
+    public void RegisterTimestamp(DateTime timestamp)
+    {
+        lock (_lock)
+        {
+            _timestamps.Enqueue(timestamp);
         }
     }
 }

@@ -1,6 +1,6 @@
 /// <summary>
-/// A flexible rate limiter that can wrap any async action.
-/// Evolved through multiple iterations of API integration projects.
+/// A flexible and thread-safe rate limiter that wraps any async action with one or more rate limit rules.
+/// Ensures all rules are respected before execution.
 /// </summary>
 public class RateLimiter<TArg>
 {
@@ -18,16 +18,30 @@ public class RateLimiter<TArg>
         }
     }
 
+    /// <summary>
+    /// Performs the wrapped action after all rate limit rules allow execution.
+    /// Ensures timestamps are registered only after all checks pass.
+    /// </summary>
     public async Task Perform(TArg arg, CancellationToken cancellationToken = default)
     {
-        if (arg == null)
+        if (arg == null) throw new ArgumentNullException(nameof(arg));
+
+        List<DateTime> timestamps = new();
+
+        // Wait for each rule to allow execution, one at a time
+        foreach (var rule in _rules)
         {
-            throw new ArgumentNullException(nameof(arg));
+            var approvedTime = await rule.WaitUntilAllowedAsync(cancellationToken);
+            timestamps.Add(approvedTime);
         }
 
-        // Wait for all rules to allow the request (in parallel)
-        await Task.WhenAll(_rules.Select(rule => rule.WaitUntilAllowedAsync(cancellationToken)));
-        // Once allowed, perform the actual action
+        // Only after all rules have approved, register the timestamp in each
+        for (int i = 0; i < _rules.Count; i++)
+        {
+            _rules[i].RegisterTimestamp(timestamps[i]);
+        }
+
+        // Execute the original action
         await _action(arg);
     }
 }
