@@ -31,27 +31,28 @@ public class RateLimitRule
     /// </summary>
     public async Task<DateTime> WaitUntilAllowedAsync(CancellationToken cancellationToken = default)
     {
-        while (true)
+        bool allowed = false;
+
+        while (!allowed)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            DateTime now;
-            TimeSpan delay;
+            DateTime now = DateTime.UtcNow;
+            TimeSpan? delay = null;
 
             lock (_lock)
             {
-                now = DateTime.UtcNow;
-
                 // Remove timestamps that are outside the current sliding window
                 while (_timestamps.Count > 0 && now - _timestamps.Peek() > _window)
                 {
                     _timestamps.Dequeue();
                 }
 
-                // If we're under the limit, return the timestamp to be used by the caller
+                // If we're under the limit, allow execution
                 if (_timestamps.Count < _limit)
                 {
-                    return now;
+                    allowed = true;
+                    break;
                 }
 
                 // Otherwise, calculate how much time we need to wait
@@ -62,12 +63,19 @@ public class RateLimitRule
             if (delay > TimeSpan.Zero)
             {
                 // Wait outside the lock to avoid blocking other threads
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(delay.Value, cancellationToken);
             }
-
-            // After waiting, loop again to re-check the rate limit condition
+            else
+            {
+                // Defensive yield in case of timing anomalies
+                await Task.Yield();
+            }
         }
+
+        // Return the current timestamp once the rule allows it
+        return DateTime.UtcNow;
     }
+
 
     /// <summary>
     /// Registers a timestamp in the queue once all rules have approved execution.
